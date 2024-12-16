@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 )
 
 func main() {
@@ -15,6 +16,9 @@ func main() {
 		log.Fatalln("Could not read dir", err)
 	}
 
+	errorChannel := make(chan error, len(files))
+
+	var wg sync.WaitGroup
 	for _, file := range files {
 		if file.IsDir() {
 			continue
@@ -23,14 +27,19 @@ func main() {
 		extension := getFileExtension(file.Name())
 
 		if extension == "" {
-			moveFile(downloadsPath, file.Name(), "no-extensions")
+			wg.Add(1)
+			go moveFile(downloadsPath, file.Name(), "no-extensions", &wg, errorChannel)
 			continue
 		}
 
-		err := moveFile(downloadsPath, file.Name(), extension)
-		if err != nil {
-			log.Printf("Couldn't move file %v", file.Name())
-		}
+		wg.Add(1)
+		go moveFile(downloadsPath, file.Name(), extension, &wg, errorChannel)
+	}
+	wg.Wait()
+	close(errorChannel)
+
+	for err := range errorChannel {
+		log.Printf("Error: %v", err)
 	}
 }
 
@@ -87,19 +96,23 @@ func getFileExtension(fileName string) string {
 	return extension
 }
 
-func moveFile(downloadsPath string, fileName string, disDirName string) error {
+func moveFile(downloadsPath string, fileName string, disDirName string, wg *sync.WaitGroup, errorChannel chan error) {
+	defer wg.Done()
 	oldLocation := path.Join(downloadsPath, fileName)
 	newLocation := path.Join(downloadsPath, disDirName, fileName)
 	isDirExists, err := createDirIfNotExist(downloadsPath, disDirName)
 	if err != nil && !isDirExists {
 		log.Fatalln("Can not move file because it's dir doesn't exist", err)
-		return err
+		errorChannel <- err
+		return
 	}
 
 	error := os.Rename(oldLocation, newLocation)
 	if error != nil {
 		log.Fatal(error)
-		return err
+		errorChannel <- err
+		return
 	}
-	return err
+	errorChannel <- err
+	return
 }
