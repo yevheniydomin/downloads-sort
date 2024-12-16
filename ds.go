@@ -12,7 +12,7 @@ func main() {
 
 	files, err := os.ReadDir(downloadsPath)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalln("Could not read dir", err)
 	}
 
 	for _, file := range files {
@@ -31,12 +31,10 @@ func main() {
 		if err != nil {
 			log.Printf("Couldn't move file %v", file.Name())
 		}
-
 	}
-
 }
 
-func exists(path string) (bool, error) {
+func IsDirExists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
 		return true, nil
@@ -53,7 +51,7 @@ func getDownloadsPath() string {
 		log.Fatal("Please set DOWNLOADS_PATH env variable in your system with path to your Downloads folder")
 	}
 
-	isValidPass, err := exists(path)
+	isValidPass, err := IsDirExists(path)
 
 	if err != nil || !isValidPass {
 		log.Fatal("Could not set path to Downloads folder", err)
@@ -63,7 +61,7 @@ func getDownloadsPath() string {
 
 func createDirIfNotExist(downloadsPath string, dirPath string) (bool, error) {
 	dedicatedDir := path.Join(downloadsPath, dirPath)
-	isDirExist, err := exists(dedicatedDir)
+	isDirExist, err := IsDirExists(dedicatedDir)
 	if err != nil {
 		log.Fatal("Couldn't handle createDirIfNotExist()", err)
 		return false, err
@@ -81,11 +79,11 @@ func createDirIfNotExist(downloadsPath string, dirPath string) (bool, error) {
 
 func getFileExtension(fileName string) string {
 	extension := ""
-	splittedFileName := strings.Split(fileName, ".")
-	if len(splittedFileName) < 2 {
+	splitFileName := strings.Split(fileName, ".")
+	if len(splitFileName) < 2 {
 		return extension
 	}
-	extension = splittedFileName[len(splittedFileName)-1]
+	extension = splitFileName[len(splitFileName)-1]
 	return extension
 }
 
